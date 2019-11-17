@@ -75,24 +75,22 @@ sys_dup2(void)
 
   if(argfd(0, &fd1, &f1) < 0)
     return -1;
-		if(argint(1, &fd2) < 0 )
+		if(argint(1, &fd2) < 0)
 				return -1;
-//????
 		else{
-				if(curproc->ofile[fd] == 0){
-      curproc->ofile[fd] = f;
-      return fd;
-    }
-//////??
-				filedup(fd1);
+      struct proc *curproc = myproc();
+      if( (fd2>= 0) && (fd2 < NOFILE) ){
+        if(fd1 != fd2){
+           f2 = myproc()->ofile[fd2];
+           if(curproc->ofile[fd2] != 0)  fileclose(f2);
+              curproc->ofile[fd2] = f1;
+              filedup(f1);
+              return fd2; 
+            
+        }else return fd1;
+      }    
 		}
-		
-
-  if((fd=fdalloc(f)) < 0)
-    return -1;
-  filedup(f);
-  return fd;
-
+    return -1;  
 }
 
 
