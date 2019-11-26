@@ -13,6 +13,8 @@ struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
+extern int mappages(pde_t *, void *, uint , uint , int);
+
 
 void
 tvinit(void)
@@ -36,6 +38,7 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
+  char *mem;
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();
@@ -80,24 +83,24 @@ trap(struct trapframe *tf)
   case T_PGFLT: //Page Fault
         if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
-      cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
+      cprintf("unexpected page fault %d from cpu %d eip %x (cr2=0x%x)\n",
               tf->trapno, cpuid(), tf->eip, rcr2());
       panic("Page fault into the kernel!");
     }
     // In user space, assume process misbehaved.
-    cprintf("Page Fault: pid %d %s: trap %d err %d on cpu %d "
-            "eip 0x%x addr 0x%x--kill proc\n",
-            myproc()->pid, myproc()->name, tf->trapno,
-            tf->err, cpuid(), tf->eip, rcr2());
-    myproc()->killed = 1;
 
-  //TODO:
-    //Ver como se hace todo esto en allocvm:
-    //Pedir marco pag
-    //LLamar mappages
-    //No hace falta inabilitar TLB pq estas creciendo no hay info en el TLB que haya que quitar
-
-
+    mem = kalloc(); //Get free page
+    if(mem == 0){ //No free page available
+      cprintf("page fault out of memory\n");
+      myproc()->killed = 1;
+      break;
+    }
+    memset(mem, 0, PGSIZE);
+    if(mappages(myproc()->pgdir, (char*)rcr2(), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+      cprintf("page fault out of memory (2)\n");
+      kfree(mem);
+      myproc()->killed = 1;
+    }
     break;
 
   //PAGEBREAK: 13

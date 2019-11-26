@@ -51,8 +51,10 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  myproc()->sz = addr+n;
-//Comprobar que el proceso no pueda crecer infinito. El limite son 2GB. No puede estar por encima de la base del kernel : KERNBASE //Mirar en allocvm
+  //Comprobar que el proceso no pueda crecer infinito. El limite son 2GB. No puede estar por encima de la base del kernel : KERNBASE //Mirar en allocvm
+  //Comprobar que n si n es negativo se reduzca el tamaño del proceso con deallocvm + invalizacion del tlb actualizando cr3
+  myproc()->sz += n;
+
   return addr;
 }
 
