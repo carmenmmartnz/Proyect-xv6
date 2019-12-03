@@ -81,6 +81,7 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT: //Page Fault
+     
         if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
       cprintf("unexpected page fault %d from cpu %d eip %x (cr2=0x%x)\n",
@@ -88,21 +89,25 @@ trap(struct trapframe *tf)
       panic("Page fault into the kernel!");
     }
     // In user space, assume process misbehaved.
+    if(tf->err % 2 == 1){
+      myproc()->killed = 1;
+    }
+    else{
+      mem = kalloc(); //Get free page
+      if(mem == 0){ //No free page available
+        cprintf("page fault out of memory\n");
+        myproc()->killed = 1;
+        break;
+      }
+      memset(mem, 0, PGSIZE);
+      if(mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U)){
+        cprintf("page fault out of memory (2)\n");
+        kfree(mem);
+        myproc()->killed = 1;
+      }
+    }
 
-    mem = kalloc(); //Get free page
-    if(mem == 0){ //No free page available
-      cprintf("page fault out of memory\n");
-      myproc()->killed = 1;
-      break;
-    }
-    memset(mem, 0, PGSIZE);
-    if(mappages(myproc()->pgdir, (char*)rcr2(), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("page fault out of memory (2)\n");
-      kfree(mem);
-      myproc()->killed = 1;
-    }
     break;
-
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){

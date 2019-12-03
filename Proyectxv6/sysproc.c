@@ -42,6 +42,13 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
+  //Comprobar que el proceso no pueda crecer infinito. El limite son 2GB. No puede estar por encima de la base del kernel : KERNBASE //Mirar en allocvm
+  //Comprobar que n si n es negativo se reduzca el tamaño del proceso con deallocvm + invalizacion del tlb actualizando cr3
+  
+ 
+    //TODO : completar para n negativa
+  
+
 int
 sys_sbrk(void)
 {
@@ -51,11 +58,21 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  //Comprobar que el proceso no pueda crecer infinito. El limite son 2GB. No puede estar por encima de la base del kernel : KERNBASE //Mirar en allocvm
-  //Comprobar que n si n es negativo se reduzca el tamaño del proceso con deallocvm + invalizacion del tlb actualizando cr3
-  myproc()->sz += n;
+  if(n>0){
+    if( myproc()->sz + n >= KERNBASE){
+      return -1;
+    }
+    myproc()->sz = myproc()->sz + n;
+  
+  }
+  else{
+    deallocuvm(myproc()->pgdir, myproc()->sz, myproc()->sz + n );
+    switchuvm(myproc());
+    myproc()->sz = myproc()->sz + n;
+  }
 
-  return addr;
+return addr;
+
 }
 
 int
