@@ -373,7 +373,7 @@ iunlockput(struct inode *ip)
 static uint
 bmap(struct inode *ip, uint bn)
 {
-  uint addr, *a, *b, desp, offset;
+  uint addr, *a, *b, offset1, offset2;
   struct buf *bp;
   struct buf *bp2;
 
@@ -406,14 +406,14 @@ bmap(struct inode *ip, uint bn)
       ip->addrs[NDIRECT+1] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint*)bp->data;//Indirect block
-    desp = bn / NINDIRECT;
-    if((addr = a[desp]) == 0){
-      a[desp] = addr = balloc(ip->dev);
+    offset1 = bn / NINDIRECT;
+    if((addr = a[offset1]) == 0){
+      a[offset1] = addr = balloc(ip->dev);
     bp2 = bread(ip->dev, addr);
     b = (uint*)bp2->data;
-    offset = bn % NINDIRECT;
-    if( (addr = b[offset]) == 0 ){
-      b[offset] = addr = balloc(ip->dev);
+    offset2 = bn % NINDIRECT;
+    if( (addr = b[offset2]) == 0 ){
+      b[offset2] = addr = balloc(ip->dev);
       log_write(bp2);
     }
     brelse(bp2);
@@ -422,9 +422,9 @@ bmap(struct inode *ip, uint bn)
     else{
       bp2 = bread(ip->dev, addr);
       b = (uint*)bp2->data;
-      offset = bn % NINDIRECT;
-      if( (addr = b[offset]) == 0 ){
-        b[offset] = addr = balloc(ip->dev);
+      offset2 = bn % NINDIRECT;
+      if( (addr = b[offset2]) == 0 ){
+        b[offset2] = addr = balloc(ip->dev);
         log_write(bp2);
       }
     brelse(bp2);
