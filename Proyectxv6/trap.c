@@ -81,16 +81,35 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT: //Page Fault
-     
-        if(myproc() == 0 || (tf->cs&3) == 0){
+
+  if(myproc() == 0 || (tf->cs&3) == 0){
+      if((tf->cs&3) == 0  && (rcr2() < myproc()->sz)){
+        mem = kalloc(); //Get free page
+      if(mem == 0){ //No free page available
+        cprintf("page fault out of memory\n");
+        myproc()->killed = 1;
+        break;
+      }
+      memset(mem, 0, PGSIZE);
+      if(mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U)){
+        cprintf("page fault out of memory (2)\n");
+        kfree(mem);
+        myproc()->killed = 1;
+      }
+      break;
+      }
+      else{
       // In kernel, it must be our mistake.
       cprintf("unexpected page fault %d from cpu %d eip %x (cr2=0x%x)\n",
               tf->trapno, cpuid(), tf->eip, rcr2());
       panic("Page fault into the kernel!");
+      }
     }
+    
     // In user space, assume process misbehaved.
-    if(tf->err % 2 == 1){
+    if((tf->err % 2 == 1)  && (rcr2() < myproc()->sz) ){
       myproc()->killed = 1;
+      cprintf("stack overflow\n");
     }
     else{
       mem = kalloc(); //Get free page
@@ -116,6 +135,7 @@ trap(struct trapframe *tf)
               tf->trapno, cpuid(), tf->eip, rcr2());
       panic("trap");
     }
+    
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d "
             "eip 0x%x addr 0x%x--kill proc\n",
