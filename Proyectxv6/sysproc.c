@@ -42,11 +42,6 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
-  //Comprobar que el proceso no pueda crecer infinito. El limite son 2GB. No puede estar por encima de la base del kernel : KERNBASE //Mirar en allocvm
-  //Comprobar que n si n es negativo se reduzca el tamaño del proceso con deallocvm + invalizacion del tlb actualizando cr3
-  
- 
-    //TODO : completar para n negativa
   
 
 int
