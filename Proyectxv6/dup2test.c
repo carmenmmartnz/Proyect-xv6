@@ -30,7 +30,6 @@ main(int argc, char* argv[])
   printf (4, "Este mensaje debe salir por terminal.\n");
 
   fd = open ("fichero_salida.txt", O_CREATE|O_RDWR);
-  printf(1, "Escrbiendo fd: %d\n", fd);
   printf (fd, "Salida a fichero\n");
 
   if (dup2 (fd, 9) != 9)

@@ -82,49 +82,40 @@ trap(struct trapframe *tf)
     break;
   case T_PGFLT: //Page Fault
 
-  if(myproc() == 0 || (tf->cs&3) == 0){
-      if((tf->cs&3) == 0  && (rcr2() < myproc()->sz)){
+      // In user space, assume process misbehaved.
+      if((tf->err % 2 == 0 )  && (rcr2() < myproc()->sz) ){
+        //Page not present and addres from process
+        //It is necessary to allocate a page
         mem = kalloc(); //Get free page
-      if(mem == 0){ //No free page available
-        cprintf("page fault out of memory\n");
-        myproc()->killed = 1;
+        if(mem == 0){ //No free page available
+          cprintf("page fault out of memory\n");
+          myproc()->killed = 1;
+          break;
+        }
+        memset(mem, 0, PGSIZE);
+        //Map the virtual address to the new page
+        if(mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0 ){
+          cprintf("page fault out of memory (2)\n");
+          kfree(mem);
+          myproc()->killed = 1;
+        }
         break;
       }
-      memset(mem, 0, PGSIZE);
-      if(mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U)){
-        cprintf("page fault out of memory (2)\n");
-        kfree(mem);
+      else if (tf->err % 2 == 1 && (rcr2() < myproc()->sz) ){
+        //Page was present : stack overflow occurred
         myproc()->killed = 1;
+        cprintf("stack overflow\n");
+        break;
       }
-      break;
+      if(myproc() == 0 || (tf->cs&3) == 0 ) {
+        //Kernel mode:  something went wrong
+        panic("Page fault into the kernel!");
       }
-      else{
-      // In kernel, it must be our mistake.
+
       cprintf("unexpected page fault %d from cpu %d eip %x (cr2=0x%x)\n",
-              tf->trapno, cpuid(), tf->eip, rcr2());
-      panic("Page fault into the kernel!");
-      }
-    }
-    
-    // In user space, assume process misbehaved.
-    if((tf->err % 2 == 1)  && (rcr2() < myproc()->sz) ){
+      tf->trapno, cpuid(), tf->eip, rcr2());
       myproc()->killed = 1;
-      cprintf("stack overflow\n");
-    }
-    else{
-      mem = kalloc(); //Get free page
-      if(mem == 0){ //No free page available
-        cprintf("page fault out of memory\n");
-        myproc()->killed = 1;
-        break;
-      }
-      memset(mem, 0, PGSIZE);
-      if(mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U)){
-        cprintf("page fault out of memory (2)\n");
-        kfree(mem);
-        myproc()->killed = 1;
-      }
-    }
+        
 
     break;
   //PAGEBREAK: 13

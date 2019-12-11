@@ -473,18 +473,20 @@ itrunc(struct inode *ip)
     bp = bread(ip->dev, ip->addrs[NDIRECT+1]);
     a = (uint*)bp->data;
     for(j = 0; j < NINDIRECT; j++){
-      bp2 = bread(ip->dev, ip->addrs[j]);
-      b = (uint*)bp->data;
-      for(i = 0; i < NINDIRECT; i++){ 
-        if(b[i])
-        bfree(ip->dev, b[i]);
-      }
-      brelse(bp2);
-      bfree(ip->dev, a[i]);
+      if(a[j]){
+        bp2 = bread(ip->dev, a[j]);
+        b = (uint*)bp2->data;
+        for(i = 0; i < NINDIRECT; i++){ 
+          if(b[i])
+          bfree(ip->dev, b[i]);
+        }
+        brelse(bp2);
+        bfree(ip->dev, a[j]);
+        }
     }
     brelse(bp);
-    bfree(ip->dev, ip->addrs[NDIRECT]);
-    ip->addrs[NDIRECT] = 0;
+    bfree(ip->dev, ip->addrs[NDIRECT+1]);
+    ip->addrs[NDIRECT+1] = 0;
   }
 
   ip->size = 0;

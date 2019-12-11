@@ -61,9 +61,12 @@ sys_sbrk(void)
   
   }
   else{
+    if( myproc()->sz + n >= myproc()->initsz ){
     deallocuvm(myproc()->pgdir, myproc()->sz, myproc()->sz + n );
     switchuvm(myproc());
     myproc()->sz = myproc()->sz + n;
+    }
+    else return -1;
   }
 
 return addr;
